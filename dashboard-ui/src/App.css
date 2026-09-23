@@ -911,3 +911,69 @@ body {
   margin: 6px 0 0;
   font-size: 11.5px;
 }
+
+/* Creation du compte parent / connexion */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 26px;
+  box-shadow: 0 8px 30px rgba(44, 42, 38, 0.08);
+}
+
+.auth-logo {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+  margin-bottom: 14px;
+}
+
+.auth-title {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+
+.auth-intro {
+  margin: 0 0 14px;
+  font-size: 13px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.auth-form .text-input {
+  width: 100%;
+}
+
+.auth-error {
+  margin: 4px 0 0;
+  color: #c0392b;
+  font-size: 13px;
+}
+
+.auth-submit {
+  margin-top: 10px;
+  align-self: stretch;
+  justify-content: center;
+}
+
+.topbar-user {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

@@ -24,6 +24,16 @@ docker compose up -d --build
 
 Le dashboard est disponible sur `https://<adresse-de-la-machine>` (port 443).
 
+### Premier accès : création du compte parent
+
+À la première visite, le dashboard demande de **créer le compte parent** (identifiant et mot de passe de 8 caractères minimum). Ce compte est unique et crée automatiquement une session ; ensuite, chaque visite passe par la page de connexion. Tant que ce compte n'existe pas, n'importe qui pouvant joindre le serveur peut le créer : fais-le tout de suite après l'installation.
+
+Le mot de passe est stocké haché (scrypt), les sessions durent 14 jours, et 5 échecs de connexion consécutifs bloquent temporairement l'adresse. Mot de passe oublié : supprime le compte, puis recrée-le à la prochaine visite (les enfants et appareils ne sont pas touchés) :
+
+```bash
+docker compose exec server node -e "const {DatabaseSync}=require('node:sqlite'); const db=new DatabaseSync('/data/nautilyou.db'); db.exec('PRAGMA foreign_keys=ON; DELETE FROM parents')"
+```
+
 ### HTTPS et certificat auto-signé
 
 Un conteneur nginx est la seule porte d'entrée : il sert le dashboard et relaie l'API et le WebSocket des appareils vers le serveur, qui reste interne. Au premier démarrage il génère un certificat **auto-signé** (valable 10 ans) pour les adresses de `SERVER_NAME`.

@@ -1,16 +1,38 @@
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4100/api";
+// Meme origine que le dashboard : nginx (Docker) ou le proxy de Vite (developpement) relaie /api.
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 async function request(path, options) {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     ...options,
   });
+  if (res.status === 401 && !path.startsWith("/auth/")) {
+    // Session expiree ou absente : la porte d'entree (AuthGate) renvoie vers la page de connexion.
+    window.dispatchEvent(new Event("nautilyou:unauthorized"));
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error || `Erreur API ${res.status}`);
   }
   if (res.status === 204) return null;
   return res.json();
+}
+
+export function authStatus() {
+  return request("/auth/status");
+}
+
+export function authSetup(username, password) {
+  return request("/auth/setup", { method: "POST", body: JSON.stringify({ username, password }) });
+}
+
+export function authLogin(username, password) {
+  return request("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) });
+}
+
+export function authLogout() {
+  return request("/auth/logout", { method: "POST" });
 }
 
 export function fetchChildren() {

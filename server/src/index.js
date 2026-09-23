@@ -1,5 +1,4 @@
 import express from "express";
-import cors from "cors";
 import { createServer as createHttpServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 import { readFileSync } from "node:fs";
@@ -9,16 +8,24 @@ import { devicesRouter, pairingRouter } from "./routes/devices.js";
 import { alertsRouter } from "./routes/alerts.js";
 import { requestsRouter } from "./routes/requests.js";
 import { attachDeviceSocket } from "./deviceSocket.js";
+import { authRouter, requireAuth, sameOriginOnly } from "./auth.js";
 
 const app = express();
-app.use(cors());
+// Derriere le reverse proxy nginx (reseau prive Docker) : req.ip et req.secure reflètent le vrai client.
+app.set("trust proxy", "loopback, linklocal, uniquelocal");
 app.use(express.json());
+app.use(sameOriginOnly);
 
+// Routes publiques : sante, authentification du parent, et pairing d'un appareil (protege par un code
+// a usage unique genere depuis le dashboard). Le WebSocket des appareils s'authentifie par cle RSA.
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+app.use("/api/auth", authRouter);
+app.use("/api/pairing", pairingRouter);
 
+// Tout le reste (gestion des enfants, appareils, alertes, demandes) exige une session parent.
+app.use("/api", requireAuth);
 app.use("/api/children", childrenRouter);
 app.use("/api/devices", devicesRouter);
-app.use("/api/pairing", pairingRouter);
 app.use("/api/alerts", alertsRouter);
 app.use("/api/requests", requestsRouter);
 

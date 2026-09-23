@@ -10,6 +10,21 @@ db.exec("PRAGMA journal_mode = WAL;");
 db.exec("PRAGMA foreign_keys = ON;");
 
 db.exec(`
+-- Compte parent (dashboard) et ses sessions : voir auth.js.
+CREATE TABLE IF NOT EXISTS parents (
+  id TEXT PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+  password_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash TEXT PRIMARY KEY,
+  parent_id TEXT NOT NULL REFERENCES parents(id) ON DELETE CASCADE,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS children (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

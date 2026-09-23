@@ -40,10 +40,4 @@ public class NautilyouApiClient
         var envelope = await res.Content.ReadFromJsonAsync<DeviceDetailEnvelope>(JsonOptions);
         return envelope?.Device;
     }
-
-    public async Task ReportActivityAsync(string deviceId, int usedMinutes, IReadOnlyList<(string Site, int Count)>? topSites = null)
-    {
-        var sites = (topSites ?? Array.Empty<(string, int)>()).Select(s => new object[] { s.Site, s.Count });
-        await _http.PostAsJsonAsync($"devices/{deviceId}/activity", new { usedMinutes, topSites = sites }, JsonOptions);
-    }
 }

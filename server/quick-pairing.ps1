@@ -8,10 +8,13 @@
 # Options :
 #   -ChildName "Papa"   (nom de l'enfant a utiliser/creer, par defaut "Papa")
 #   -Port 4100          (port du serveur, par defaut 4100)
+#   -Username / -Password  (compte parent du dashboard ; demandes si absents)
 
 param(
     [string]$ChildName = "Papa",
-    [int]$Port = 4100
+    [int]$Port = 4100,
+    [string]$Username,
+    [string]$Password
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,7 +23,7 @@ $BaseUrl = "http://localhost:$Port"
 
 function Test-ServerUp {
     try {
-        Invoke-RestMethod -Uri "$BaseUrl/api/children" -Method Get -TimeoutSec 2 | Out-Null
+        Invoke-RestMethod -Uri "$BaseUrl/api/health" -Method Get -TimeoutSec 2 | Out-Null
         return $true
     } catch {
         return $false
@@ -46,17 +49,26 @@ if (Test-ServerUp) {
     Write-Host "Serveur pret sur $BaseUrl" -ForegroundColor Green
 }
 
-$children = (Invoke-RestMethod -Uri "$BaseUrl/api/children" -Method Get).children
+# L'API du dashboard exige une session parent : connexion avec le compte cree au premier acces.
+if (-not $Username) { $Username = Read-Host "Identifiant parent" }
+if (-not $Password) {
+    $secure = Read-Host "Mot de passe" -AsSecureString
+    $Password = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
+}
+$loginBody = @{ username = $Username; password = $Password } | ConvertTo-Json
+Invoke-RestMethod -Uri "$BaseUrl/api/auth/login" -Method Post -ContentType "application/json" -Body $loginBody -SessionVariable session | Out-Null
+
+$children = (Invoke-RestMethod -Uri "$BaseUrl/api/children" -Method Get -WebSession $session).children
 $child = $children | Where-Object { $_.name -eq $ChildName } | Select-Object -First 1
 
 if (-not $child) {
     Write-Host "Creation de l'enfant '$ChildName'..." -ForegroundColor Cyan
-    $child = (Invoke-RestMethod -Uri "$BaseUrl/api/children" -Method Post -ContentType "application/json" -Body (@{ name = $ChildName } | ConvertTo-Json)).child
+    $child = (Invoke-RestMethod -Uri "$BaseUrl/api/children" -Method Post -ContentType "application/json" -Body (@{ name = $ChildName } | ConvertTo-Json) -WebSession $session).child
 } else {
     Write-Host "Enfant '$ChildName' deja existant (id: $($child.id))" -ForegroundColor Green
 }
 
-$pairing = Invoke-RestMethod -Uri "$BaseUrl/api/children/$($child.id)/pairing-code" -Method Post -ContentType "application/json" -Body "{}"
+$pairing = Invoke-RestMethod -Uri "$BaseUrl/api/children/$($child.id)/pairing-code" -Method Post -ContentType "application/json" -Body "{}" -WebSession $session
 
 Write-Host ""
 Write-Host "==================================================" -ForegroundColor Yellow

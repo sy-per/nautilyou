@@ -55,7 +55,7 @@ function syntheticAllDevicesDetail(child) {
   };
 }
 
-function TopBar({ children, selectedChildId, onSelectChild, alertsCount, onOpenAlerts, onAddChild }) {
+function TopBar({ children, selectedChildId, onSelectChild, alertsCount, onOpenAlerts, onAddChild, username, onLogout }) {
   return (
     <div className="topbar">
       <button className="avatar-btn" title="Alertes" onClick={onOpenAlerts}>
@@ -89,6 +89,13 @@ function TopBar({ children, selectedChildId, onSelectChild, alertsCount, onOpenA
         <div className="avatar avatar-add">+</div>
         <span>Ajouter enfant</span>
       </button>
+
+      <div className="topbar-user">
+        <span className="muted">{username}</span>
+        <button className="link-btn" onClick={onLogout}>
+          Se déconnecter
+        </button>
+      </div>
     </div>
   );
 }
@@ -411,7 +418,7 @@ function SiteListsPanel({ config, overridden }) {
   );
 }
 
-export default function App() {
+export default function App({ username, onLogout }) {
   const [children, setChildren] = useState(null);
   const [error, setError] = useState(null);
   const [selectedChildId, setSelectedChildId] = useState(null);
@@ -630,6 +637,8 @@ export default function App() {
         alertsCount={pendingRequests.length}
         onOpenAlerts={() => setAlertsOpen(true)}
         onAddChild={() => setChildModal({ mode: "add" })}
+        username={username}
+        onLogout={onLogout}
       />
 
       <div className="panel">

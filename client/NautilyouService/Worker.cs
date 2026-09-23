@@ -64,7 +64,6 @@ public class Worker : BackgroundService
         var pairing = await EnsurePairedAsync(stoppingToken);
         _deviceId = pairing.DeviceId;
         var tls = new TlsPinning(pairing.CertSha256, allowFirstUse: false);
-        var api = new NautilyouApiClient(pairing.ServerUrl, tls);
         var (rsa, _) = DeviceKeyStore.LoadOrCreate();
 
         _logger.LogInformation("Nautilyou service demarre - appareil {DeviceId} sur {ServerUrl}", pairing.DeviceId, pairing.ServerUrl);
@@ -151,7 +150,7 @@ public class Worker : BackgroundService
             {
                 try
                 {
-                    await TickAsync(socket, api);
+                    await TickAsync(socket);
                 }
                 catch (Exception ex)
                 {
@@ -222,7 +221,7 @@ public class Worker : BackgroundService
         }
     }
 
-    private async Task TickAsync(DeviceSocketClient socket, NautilyouApiClient api)
+    private async Task TickAsync(DeviceSocketClient socket)
     {
         AccumulateUsedTime();
         var usedMinutesToday = UsedMinutesToday;
@@ -268,15 +267,11 @@ public class Worker : BackgroundService
             "Temps utilise: {Used}min / quota {Quota}min (bonus inclus) - fenetre {Start}-{End} - autorise: {Ok} - ws connecte: {Connected}",
             usedMinutesToday, quota, device.Config.Time.WindowStart, device.Config.Time.WindowEnd, ok, socket.IsConnected);
 
-        var topSites = _dnsFilter.GetTopSites(8);
+        // Hors connexion WebSocket l'activite n'est pas envoyee : le compteur local continue et sera
+        // renvoye des la reconnexion (l'ancien repli HTTP non authentifie a ete supprime).
         if (socket.IsConnected)
         {
-            await socket.SendActivityAsync(usedMinutesToday, topSites);
-        }
-        else
-        {
-            // Repli HTTP si le WebSocket est momentanement deconnecte.
-            await api.ReportActivityAsync(_deviceId, usedMinutesToday, topSites);
+            await socket.SendActivityAsync(usedMinutesToday, _dnsFilter.GetTopSites(8));
         }
 
         if (!ok)

@@ -64,37 +64,6 @@ devicesRouter.post("/:id/bonus", (req, res) => {
   res.status(201).json({ device: deviceDetail(updated) });
 });
 
-// Rapport d'usage via HTTP — utilisé en secours si le WebSocket n'est pas connecté (le canal
-// WebSocket transporte aussi ces mêmes rapports en temps normal, voir deviceSocket.js).
-devicesRouter.post("/:id/activity", (req, res) => {
-  const row = db.prepare("SELECT id FROM devices WHERE id = ?").get(req.params.id);
-  if (!row) return res.status(404).json({ error: "appareil introuvable" });
-  const { date, usedMinutes, topSites, topApps, blockedAppsCount } = req.body || {};
-  const d = date || today();
-
-  db.prepare(
-    `INSERT INTO activity_snapshots (device_id, date, used_minutes, top_sites, top_apps, blocked_apps_count)
-     VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT(device_id, date) DO UPDATE SET
-       used_minutes = excluded.used_minutes,
-       top_sites = excluded.top_sites,
-       top_apps = excluded.top_apps,
-       blocked_apps_count = excluded.blocked_apps_count`
-  ).run(
-    req.params.id,
-    d,
-    usedMinutes || 0,
-    JSON.stringify(topSites || []),
-    JSON.stringify(topApps || []),
-    blockedAppsCount || 0
-  );
-
-  db.prepare("UPDATE devices SET online = 1, last_seen_at = datetime('now') WHERE id = ?").run(req.params.id);
-
-  const updated = db.prepare("SELECT * FROM devices WHERE id = ?").get(req.params.id);
-  res.status(201).json({ device: deviceDetail(updated) });
-});
-
 // Applications installees remontees par l'appareil (noms affiches, tries), pour le selecteur d'apps.
 devicesRouter.get("/:id/apps", (req, res) => {
   const row = db.prepare("SELECT apps, updated_at FROM device_apps WHERE device_id = ?").get(req.params.id);

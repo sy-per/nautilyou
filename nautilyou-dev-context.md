@@ -600,6 +600,20 @@ Décision utilisateur : **réseau local, certificat auto-signé, nginx en revers
 - `README.md` à la racine : installation du serveur (clone, `.env`, `docker compose up -d --build`), certificat, sauvegarde/mise à jour, installation du client.
 - Dépôt : `https://github.com/sy-per/nautilyou`.
 
+## Compte parent et page de connexion (2026-09-23)
+
+Oubli signalé par l'utilisateur : au premier accès il faut créer le compte parent, et tout le dashboard doit être derrière une connexion. Avant ce changement **toute l'API du dashboard était ouverte** à quiconque joignait le serveur.
+
+- **Serveur** (`server/src/auth.js`, nouveau ; tables `parents` et `sessions` dans `db.js`) : compte parent unique, créé par `POST /api/auth/setup` uniquement tant qu'aucun compte n'existe (INSERT conditionnel, donc pas de course entre deux requêtes) ; `GET /api/auth/status` (à créer / à connecter / connecté), `POST /api/auth/login`, `POST /api/auth/logout`. Mot de passe haché **scrypt** avec sel ; session = jeton aléatoire de 256 bits en cookie **httpOnly, SameSite=Strict, Secure** derrière HTTPS (seul le hash SHA-256 du jeton est en base), 14 jours ; 5 échecs de connexion par adresse déclenchent un blocage croissant (30 s à 15 min, HTTP 429) ; vérification factice pour un identifiant inconnu (pas de fuite par le temps de réponse) ; contrôle d'origine sur les requêtes qui modifient des données (CSRF, en plus de SameSite). Identifiant 3 caractères minimum, mot de passe 8.
+- **Routes publiques** : `/api/health`, `/api/auth/*`, `/api/pairing/complete` (protégé par le code à usage unique) ; le WebSocket `/ws/device` reste authentifié par clé RSA. **Tout le reste exige la session** (`requireAuth`). CORS supprimé (dépendance `cors` retirée) : le dashboard est servi sur la même origine (nginx en Docker, proxy de Vite en dev, `DEV_API_TARGET` pour une autre cible). `trust proxy` pour le réseau privé Docker.
+- **Repli HTTP d'activité supprimé** (route `POST /devices/:id/activity` non authentifiée + `ReportActivityAsync` côté client) : le canal WebSocket authentifié suffit, hors connexion le compteur local continue et est renvoyé à la reconnexion.
+- **Dashboard** : `AuthGate.jsx` (chargement, création du compte avec confirmation, connexion), bouton « Se déconnecter » avec l'identifiant dans la barre du haut, retour automatique à la connexion sur une réponse 401 (`api.js`, `credentials: same-origin`, chemin `/api` relatif).
+- **nginx** : `Host` transmis avec le port (`$http_host`), sinon le contrôle d'origine refuserait tout avec un port personnalisé.
+- **Testé** : API en requêtes réelles (14 cas : refus sans session, cookie httpOnly, 2e création refusée, origine étrangère 403, blocage 429, déconnexion, hash en base, aucun mot de passe dans les logs) ; interface dans le navigateur (création avec erreur de confirmation, arrivée sur le dashboard, déconnexion, connexion) ; **pile Docker complète via nginx en HTTPS** (cookie Secure, session, POST même origine 201 / origine étrangère 403, port 8443). Commande de réinitialisation du compte testée (documentée dans le README).
+- `server/quick-pairing.ps1` se connecte maintenant (identifiant et mot de passe demandés ou `-Username`/`-Password`).
+- **Pas de changement de mot de passe dans l'interface** (route retirée faute d'écran) ; compte unique ; pas de double authentification. À prévoir si besoin.
+- Conséquence pour la base de dev existante : au prochain démarrage, le dashboard demandera de créer le compte.
+
 ## Statut
 
 - **UI mock du dashboard validée par l'utilisateur le 2026-09-23** ("Parfait on part là-dessus"). Détail dans la section UI mock ci-dessus.
