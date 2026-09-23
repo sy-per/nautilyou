@@ -586,6 +586,10 @@ Demande utilisateur : la machine envoie sa liste d'applications (la même que "A
 - **Limites connues** : les applications du Microsoft Store (UWP) ne sont pas dans ces clés du registre, donc non listées ; applications portables (sans installateur) non listées ; le nom affiché peut contenir un numéro de version (ex. "7-Zip 25.01 (x64)") : si l'appli est mise à jour, le nom change et la règle ne correspond plus (l'ancien nom disparaît de la liste) ; le blocage par exécutable termine le process (`Kill`), comme avant.
 - **Pas encore testé de bout en bout avec le vrai Service** : il faut relancer le serveur (nouvelle table) et le Service, puis ouvrir la config APPS dans le dashboard.
 
+## Dépôt Git (2026-09-23)
+
+Dépôt **privé** `https://github.com/sy-per/nautilyou`, créé par l'utilisateur (le jeton GitHub de l'outil MCP n'a pas le droit de créer un dépôt ; le push HTTPS depuis la machine fonctionne). Le dépôt local est le dossier `Nautilyou/` lui-même (branche `main`, 1er commit `536248f`). `.gitignore` racine : `node_modules`, `dist`, `bin`/`obj`, `data/`, `*.db*`, `certs/`, `.env`, `installer/staging` et `installer/output`, `.claude/`. Aucun secret versionné. Commits faits avec une identité passée en ligne (`-c user.name`), la config git de la machine n'a pas été modifiée.
+
 ## Statut
 
 - **UI mock du dashboard validée par l'utilisateur le 2026-09-23** ("Parfait on part là-dessus"). Détail dans la section UI mock ci-dessus.
