@@ -1,8 +1,9 @@
-# HTTP : simple redirection vers HTTPS.
+# HTTP : simple redirection vers HTTPS (sur le port HTTPS publie, ${HTTPS_PORT}, substitue au demarrage
+# par nginx a partir des variables d'environnement : les $host, $uri... de nginx ne sont pas touches).
 server {
     listen 80;
     server_name _;
-    return 301 https://$host$request_uri;
+    return 301 https://$host:${HTTPS_PORT}$request_uri;
 }
 
 # HTTPS : dashboard + API + WebSocket des appareils, tout sur le meme port.
