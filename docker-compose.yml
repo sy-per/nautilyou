@@ -1,20 +1,35 @@
+# Nautilyou (serveur) : deux conteneurs.
+#   - server : API + WebSocket des appareils + base SQLite. Non expose : joignable seulement par "web".
+#   - web    : nginx. Sert le dashboard et relaie /api et /ws/device vers "server", en HTTPS
+#              (certificat auto-signe genere au premier demarrage, conserve dans le volume nautilyou_certs).
+#
+# Reglages : copier .env.example en .env (voir README.md).
+
 services:
   server:
     build: ./server
     container_name: nautilyou-server
     restart: unless-stopped
-    ports:
-      - "4100:4100" # API REST + WebSocket temps réel (/ws/device)
-    volumes:
-      - nautilyou_data:/data
-      # - ./server/certs:/certs:ro
     environment:
       PORT: 4100
       DB_PATH: /data/nautilyou.db
-      # TLS optionnel (HTTPS + WSS) : decommenter ces 2 lignes ET le volume ./server/certs ci-dessous
-      # apres avoir genere un certificat avec server/gen-cert.sh.
-      # TLS_CERT_FILE: /certs/server.crt
-      # TLS_KEY_FILE: /certs/server.key
+    volumes:
+      - nautilyou_data:/data
+
+  web:
+    build: ./dashboard-ui
+    container_name: nautilyou-web
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTP_PORT:-80}:80"
+    environment:
+      SERVER_NAME: ${SERVER_NAME:-localhost}
+    volumes:
+      - nautilyou_certs:/certs
 
 volumes:
   nautilyou_data:
+  nautilyou_certs:

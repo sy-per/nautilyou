@@ -590,6 +590,16 @@ Demande utilisateur : la machine envoie sa liste d'applications (la même que "A
 
 Dépôt **privé** `https://github.com/sy-per/nautilyou`, créé par l'utilisateur (le jeton GitHub de l'outil MCP n'a pas le droit de créer un dépôt ; le push HTTPS depuis la machine fonctionne). Le dépôt local est le dossier `Nautilyou/` lui-même (branche `main`, 1er commit `536248f`). `.gitignore` racine : `node_modules`, `dist`, `bin`/`obj`, `data/`, `*.db*`, `certs/`, `.env`, `installer/staging` et `installer/output`, `.claude/`. Aucun secret versionné. Commits faits avec une identité passée en ligne (`-c user.name`), la config git de la machine n'a pas été modifiée.
 
+## Déploiement Docker sur une vraie machine (2026-09-23)
+
+Décision utilisateur : **réseau local, certificat auto-signé, nginx en reverse proxy pour le HTTPS**.
+- `docker-compose.yml` : 2 conteneurs. `server` (API + WebSocket + SQLite, **non exposé**, volume `nautilyou_data`) et `web` (nginx, ports 443 et 80, volume `nautilyou_certs`). Réglages via `.env` (`SERVER_NAME` = IP/nom de la machine, `HTTPS_PORT`, `HTTP_PORT`) ; modèle dans `.env.example`.
+- `dashboard-ui/Dockerfile` : build Vite avec `VITE_API_URL=/api` (même origine), puis nginx. `nginx/default.conf` : 80 redirige vers 443 ; 443 sert le dashboard, relaie `/api/` et `/ws/` (upgrade WebSocket, timeout 1 h) vers `server:4100`. `nginx/40-selfsigned-cert.sh` : génère au premier démarrage un certificat auto-signé de 10 ans avec `SERVER_NAME` dans le SAN, **conservé dans le volume** (même empreinte après redémarrage, donc les appareils qui l'épinglent continuent de se connecter). `.dockerignore` (dashboard et serveur), `.gitattributes` (LF pour `.sh`, `.conf`, `Dockerfile`).
+- **Testé dans WSL Docker** (ports 8443/8080) : certificat généré avec l'IP, dashboard servi en HTTPS, `/api/health` relayé, 80 → 301 vers HTTPS, **WSS relayé jusqu'au serveur** (fermeture 4004 "appareil introuvable" renvoyée par le serveur), empreinte identique après `down`/`up`. Volumes de test supprimés. Pas encore déployé sur la vraie machine.
+- **Client** (`PairingService`) : l'adresse saisie sans schéma est essayée en **HTTPS puis en HTTP** ; messages d'erreur clairs (code invalide, code expiré ou déjà utilisé, serveur injoignable). Le formulaire du Companion suggère `192.168.1.50`. Construire à nouveau l'installateur pour l'embarquer.
+- `README.md` à la racine : installation du serveur (clone, `.env`, `docker compose up -d --build`), certificat, sauvegarde/mise à jour, installation du client.
+- Dépôt : `https://github.com/sy-per/nautilyou`.
+
 ## Statut
 
 - **UI mock du dashboard validée par l'utilisateur le 2026-09-23** ("Parfait on part là-dessus"). Détail dans la section UI mock ci-dessus.

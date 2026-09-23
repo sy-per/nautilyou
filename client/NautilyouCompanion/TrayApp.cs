@@ -202,7 +202,7 @@ public class StatusForm : Form
         });
         _serverUrlBox = new TextBox
         {
-            PlaceholderText = "ex: 192.168.1.10:4100",
+            PlaceholderText = "ex: 192.168.1.50",
             Location = new Point(20, 120),
             Size = new Size(260, 24),
         };
