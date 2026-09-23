@@ -1,0 +1,22 @@
+# Dependances et builds
+node_modules/
+dist/
+bin/
+obj/
+.vs/
+
+# Donnees et secrets du serveur (base SQLite, certificats TLS)
+data/
+*.db
+*.db-wal
+*.db-shm
+certs/
+.env
+
+# Sorties de l'installateur Windows
+client/installer/staging/
+client/installer/output/
+
+# Divers
+*.log
+.claude/

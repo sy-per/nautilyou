@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="NautilyouCompanion/NautilyouCompanion.csproj" />
+  <Project Path="NautilyouService/NautilyouService.csproj" />
+  <Project Path="NautilyouShared/NautilyouShared.csproj" />
+</Solution>
