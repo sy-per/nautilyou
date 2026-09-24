@@ -71,6 +71,10 @@ requestsRouter.post("/:id/approve", (req, res) => {
         if (!newWeb.whitelist.includes(domain)) newWeb.whitelist = [...newWeb.whitelist, domain];
       } else {
         newWeb.blacklist = newWeb.blacklist.filter((d) => d !== domain);
+        // Site bloque par une liste publique du filtre enfant : on l'ajoute aux exceptions.
+        if (newWeb.childFilter?.enabled && !newWeb.whitelist.includes(domain)) {
+          newWeb.whitelist = [...newWeb.whitelist, domain];
+        }
       }
       db.prepare("UPDATE devices SET overrides = ? WHERE id = ?").run(
         JSON.stringify({ ...overrides, web: newWeb }),

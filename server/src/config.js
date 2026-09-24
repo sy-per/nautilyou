@@ -22,7 +22,16 @@ export function defaultConfigTemplate() {
       windowStart: "09:00",
       windowEnd: "20:00",
     },
-    web: { supervisionOn: true, whitelistMode: false, blacklist: [], whitelist: [] },
+    // childFilter : filtre enfant (contenu adulte) fonde sur des listes publiques, choisies dans le
+    // dashboard (identifiants : voir dashboard-ui/src/blocklists.js). En mode liste noire, la liste
+    // blanche sert d'exceptions a ces listes.
+    web: {
+      supervisionOn: true,
+      whitelistMode: false,
+      blacklist: [],
+      whitelist: [],
+      childFilter: { enabled: false, lists: ["ut1-adult"] },
+    },
     apps: {
       supervisionOn: true,
       // Limites indépendantes façon "Temps d'écran" iOS : chaque règle a son propre groupe

@@ -21,6 +21,7 @@ import ChildModal from "./ChildModal";
 import AddDeviceModal from "./AddDeviceModal";
 import AlertsModal from "./AlertsModal";
 import Toggle from "./Toggle";
+import { childFilterOf } from "./blocklists";
 import "./App.css";
 
 const ALL_DEVICES = "__all__";
@@ -257,6 +258,14 @@ function WebCard({ config, activity, overridden, onToggle, onConfigure }) {
       <p className="muted">
         Mode : <strong>{config.web.whitelistMode ? "Liste blanche (restrictif)" : "Liste noire"}</strong>
       </p>
+      <p className="muted">
+        Filtre enfant :{" "}
+        <strong>
+          {childFilterOf(config.web).enabled
+            ? `activé (${childFilterOf(config.web).lists.length} liste${childFilterOf(config.web).lists.length > 1 ? "s" : ""})`
+            : "désactivé"}
+        </strong>
+      </p>
       <p className="muted">Sites les plus consultés</p>
       <div className="tag-row">
         {activity.topSites.length === 0 && <span className="empty">Aucune donnée</span>}
@@ -398,7 +407,11 @@ function SiteListsPanel({ config, overridden }) {
         </div>
         <div className="site-col">
           <p className="muted">
-            Liste blanche (autorisés) {whitelistMode ? "— mode restrictif actif" : "— inactive"}
+            {whitelistMode
+              ? "Liste blanche (autorisés) — mode restrictif actif"
+              : childFilterOf(config.web).enabled
+                ? "Exceptions (toujours autorisés, même si un filtre enfant les bloque)"
+                : "Liste blanche (autorisés) — inactive"}
           </p>
           {whitelist.length === 0 ? (
             <p className="empty">Aucun site en liste blanche</p>

@@ -9,12 +9,21 @@ public class TimeConfig
     public string WindowEnd { get; set; } = "23:59";
 }
 
+// Filtre enfant (contenu adulte) : listes publiques de domaines a bloquer, choisies dans le dashboard.
+// Les identifiants de listes correspondent a BlocklistCatalog (client) et a blocklists.js (dashboard).
+public class ChildFilterConfig
+{
+    public bool Enabled { get; set; }
+    public List<string> Lists { get; set; } = new() { "ut1-adult" };
+}
+
 public class WebConfig
 {
     public bool SupervisionOn { get; set; }
     public bool WhitelistMode { get; set; }
     public List<string> Blacklist { get; set; } = new();
     public List<string> Whitelist { get; set; } = new();
+    public ChildFilterConfig ChildFilter { get; set; } = new();
 }
 
 public class AppLimit

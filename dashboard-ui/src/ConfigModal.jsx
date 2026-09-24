@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Toggle from "./Toggle";
+import { BLOCKLISTS, childFilterOf } from "./blocklists";
 
 const TAB_LABELS = { web: "🌐 Web", time: "⏳ Temps", apps: "📱 Apps" };
 
@@ -49,6 +50,44 @@ function TagEditor({ items, onAdd, onRemove, placeholder }) {
   );
 }
 
+// Filtre enfant (-18) : un interrupteur et des cases a cocher parmi les listes publiques.
+function ChildFilterSection({ value, onChange }) {
+  const filter = childFilterOf(value);
+  const setFilter = (next) => onChange({ ...value, childFilter: { ...filter, ...next } });
+  const toggleList = (id) =>
+    setFilter({ lists: filter.lists.includes(id) ? filter.lists.filter((l) => l !== id) : [...filter.lists, id] });
+
+  return (
+    <div className="child-filter">
+      <SwitchRow
+        label="Filtre enfant (contenu adulte)"
+        checked={filter.enabled}
+        onChange={(enabled) => setFilter({ enabled })}
+      />
+      <fieldset className="form-fieldset" disabled={!filter.enabled || value.whitelistMode}>
+        {value.whitelistMode && (
+          <p className="muted app-picker-hint">Sans effet en mode liste blanche (déjà restrictif).</p>
+        )}
+        {BLOCKLISTS.map((list) => (
+          <label className="child-filter-option" key={list.id}>
+            <input type="checkbox" checked={filter.lists.includes(list.id)} onChange={() => toggleList(list.id)} />
+            <span>
+              <strong>{list.name}</strong>
+              {list.recommended && <span className="chip">recommandée</span>}
+              <span className="muted child-filter-desc">
+                {list.description} Licence : {list.license}.
+              </span>
+            </span>
+          </label>
+        ))}
+        <p className="muted app-picker-hint">
+          Chaque PC télécharge ces listes lui-même depuis leur source et les met à jour chaque semaine.
+        </p>
+      </fieldset>
+    </div>
+  );
+}
+
 function WebForm({ value, onChange }) {
   const disabled = !value.supervisionOn;
   return (
@@ -80,6 +119,8 @@ function WebForm({ value, onChange }) {
           </label>
         </div>
 
+        <ChildFilterSection value={value} onChange={onChange} />
+
         <label className="field-label">Liste noire (sites interdits)</label>
         <TagEditor
           items={value.blacklist}
@@ -88,7 +129,14 @@ function WebForm({ value, onChange }) {
           onRemove={(site) => onChange({ ...value, blacklist: value.blacklist.filter((s) => s !== site) })}
         />
 
-        <label className="field-label">Liste blanche (sites autorisés)</label>
+        <label className="field-label">
+          {value.whitelistMode ? "Liste blanche (sites autorisés)" : "Exceptions (sites toujours autorisés)"}
+        </label>
+        {!value.whitelistMode && (
+          <p className="muted app-picker-hint">
+            En mode liste noire, ces sites restent accessibles même s'ils figurent dans une liste du filtre enfant.
+          </p>
+        )}
         <TagEditor
           items={value.whitelist}
           placeholder="ex: wikipedia.org"

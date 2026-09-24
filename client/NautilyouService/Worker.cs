@@ -34,6 +34,11 @@ public class Worker : BackgroundService
 
     private string _deviceId = "";
 
+    // Filtre enfant : listes publiques telechargees (BlocklistStore) et appliquees au filtre DNS.
+    private readonly BlocklistStore _blocklists;
+    private int _childFilterVersion;
+    private DateTime _lastChildFilterSync = DateTime.MinValue;
+
     // Inventaire des applications installees (voir InstalledAppsScanner) : envoye au serveur pour que le
     // dashboard propose une liste a choisir, et utilise localement pour relier un nom d'app a ses process.
     private List<InstalledApp> _installedApps = new();
@@ -48,6 +53,7 @@ public class Worker : BackgroundService
         _dnsFilter = new DnsFilterServer(logger);
         _blockedPageServer = new BlockedPageServer(logger, OnAccessRequestedAsync);
         _pipeServer = new PipeServer(logger);
+        _blocklists = new BlocklistStore(logger);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -71,6 +77,7 @@ public class Worker : BackgroundService
         {
             _logger.LogInformation("Derniere config connue rechargee depuis le cache local (mode hors-ligne) en attendant la connexion");
             _dnsFilter.UpdateConfig(_latestDevice.Config.Web);
+            _ = ApplyChildFilterAsync(_latestDevice.Config.Web.ChildFilter, stoppingToken);
         }
 
         _dnsFilter.Start(stoppingToken);
@@ -116,6 +123,7 @@ public class Worker : BackgroundService
         {
             _latestDevice = device;
             _dnsFilter.UpdateConfig(device.Config.Web);
+            _ = ApplyChildFilterAsync(device.Config.Web.ChildFilter, stoppingToken);
             _state.CachedConfig = device.Config;
             _state.CachedBonusMinutesToday = device.BonusMinutesToday;
             _state.Save();
@@ -243,6 +251,13 @@ public class Worker : BackgroundService
         var device = _latestDevice;
 
         await RefreshInstalledAppsAsync(socket);
+
+        // Rafraichit les listes du filtre enfant au moins une fois par jour (le magasin ne retelecharge
+        // qu'une liste vieille de plus d'une semaine).
+        if (DateTime.UtcNow - _lastChildFilterSync > TimeSpan.FromHours(24))
+        {
+            _ = ApplyChildFilterAsync(device.Config.Web.ChildFilter, CancellationToken.None);
+        }
         AppLimitEnforcer.Enforce(device.Config.Apps, _state.AppSecondsToday, _appInventory, _logger);
 
         var quota = device.Config.Time.DailyQuotaMinutes + device.BonusMinutesToday;
@@ -278,6 +293,34 @@ public class Worker : BackgroundService
         {
             _logger.LogInformation("Quota ou plage horaire depasse -> verrouillage de la session");
             SessionLock.Lock();
+        }
+    }
+
+    // Charge les listes choisies pour le filtre enfant (telechargement au besoin) puis les applique au
+    // filtre DNS. Une configuration plus recente lancee pendant le telechargement l'emporte.
+    private async Task ApplyChildFilterAsync(ChildFilterConfig config, CancellationToken ct)
+    {
+        var version = Interlocked.Increment(ref _childFilterVersion);
+        _lastChildFilterSync = DateTime.UtcNow;
+        try
+        {
+            var ids = config.Enabled ? config.Lists.Distinct().ToList() : new List<string>();
+            var lists = new List<ulong[]>();
+            foreach (var id in ids)
+            {
+                var source = BlocklistCatalog.Find(id);
+                if (source is null) continue; // "cloudflare-family" : pas de liste, seulement le DNS amont
+                var hashes = await _blocklists.EnsureAsync(source, ct);
+                if (hashes is not null) lists.Add(hashes);
+            }
+
+            if (version != _childFilterVersion) return;
+            _dnsFilter.SetChildFilter(config.Enabled, lists.ToArray(), ids.Contains(BlocklistCatalog.CloudflareFamilyId));
+            _logger.LogInformation("Filtre enfant : {State}, {Count} liste(s) active(s)", config.Enabled ? "actif" : "desactive", lists.Count);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning("Filtre enfant : application impossible ({Message})", ex.Message);
         }
     }
 

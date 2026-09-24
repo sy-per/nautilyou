@@ -27,7 +27,14 @@ public class DnsFilterServer
 
     private readonly ILogger _logger;
     private readonly int _port;
-    private readonly IPEndPoint _upstream = new(IPAddress.Parse("1.1.1.1"), 53);
+    private static readonly IPEndPoint DefaultUpstream = new(IPAddress.Parse("1.1.1.1"), 53);
+    // "Cloudflare for Families" : meme service, mais bloque contenu adulte et sites malveillants.
+    private static readonly IPEndPoint FamilyUpstream = new(IPAddress.Parse("1.1.1.3"), 53);
+    private volatile IPEndPoint _upstream = DefaultUpstream;
+
+    // Filtre enfant : listes d'empreintes de domaines triees (voir BlocklistStore), remplacees d'un bloc.
+    private sealed record ChildFilterState(bool Enabled, ulong[][] Lists);
+    private volatile ChildFilterState _childFilter = new(false, Array.Empty<ulong[]>());
     private UdpClient? _listener;
     private WebConfig _config = new();
 
@@ -82,6 +89,10 @@ public class DnsFilterServer
                 return domain == n || domain.EndsWith("." + n, StringComparison.Ordinal);
             });
             if (hit is not null) return hit;
+            // Entree de liste publique qui a declenche le blocage : c'est elle qu'une demande d'acces
+            // approuvee ajoutera aux exceptions.
+            var listHit = MatchChildList(domain);
+            if (listHit is not null) return listHit;
         }
         return RootDomain(domain);
     }
@@ -95,6 +106,36 @@ public class DnsFilterServer
     }
 
     public void UpdateConfig(WebConfig web) => _config = web;
+
+    // Applique le filtre enfant : listes chargees et choix du DNS amont (DNS famille de Cloudflare si demande).
+    public void SetChildFilter(bool enabled, ulong[][] lists, bool familyDns)
+    {
+        _childFilter = new ChildFilterState(enabled, lists);
+        _upstream = enabled && familyDns ? FamilyUpstream : DefaultUpstream;
+    }
+
+    // Plus long suffixe du domaine present dans une liste (ex. "cdn.exemple.com" -> "exemple.com"), ou null.
+    // On teste tous les suffixes d'au moins 2 etiquettes : les listes contiennent des domaines entiers.
+    private string? MatchChildList(string domain)
+    {
+        var state = _childFilter;
+        if (!state.Enabled || state.Lists.Length == 0) return null;
+
+        var span = domain.AsSpan();
+        var start = 0;
+        while (true)
+        {
+            var suffix = span[start..];
+            var hash = DomainHash.Of(suffix);
+            foreach (var list in state.Lists)
+            {
+                if (Array.BinarySearch(list, hash) >= 0) return suffix.ToString();
+            }
+            var dot = suffix.IndexOf('.');
+            if (dot < 0 || suffix[(dot + 1)..].IndexOf('.') < 0) return null;
+            start += dot + 1;
+        }
+    }
 
     // Vue instantanee des sites les plus visites (domaine, nombre de requetes), triee par ordre
     // decroissant. Approximation volontairement simple : compte chaque requete DNS autorisee sur
@@ -290,7 +331,12 @@ public class DnsFilterServer
             return domain == normalized || domain.EndsWith("." + normalized, StringComparison.Ordinal);
         });
 
-        return web.WhitelistMode ? MatchesAny(web.Whitelist) : !MatchesAny(web.Blacklist);
+        if (web.WhitelistMode) return MatchesAny(web.Whitelist);
+        if (MatchesAny(web.Blacklist)) return false;
+
+        // Filtre enfant : en mode liste noire, la liste blanche sert d'exceptions aux listes publiques
+        // (un site bloque a tort, ou approuve par le parent apres une demande).
+        return MatchChildList(domain) is null || MatchesAny(web.Whitelist);
     }
 
     private async Task ForwardAsync(byte[] query, IPEndPoint client)

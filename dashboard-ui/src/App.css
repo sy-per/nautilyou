@@ -977,3 +977,33 @@ body {
   align-items: center;
   gap: 10px;
 }
+
+/* Filtre enfant (ConfigModal, section WEB) */
+.child-filter {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 4px 0 10px;
+}
+
+.child-filter-option {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 6px 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.child-filter-option input {
+  margin-top: 3px;
+}
+
+.child-filter-option strong {
+  margin-right: 6px;
+}
+
+.child-filter-desc {
+  display: block;
+  font-size: 11.5px;
+}
