@@ -42,6 +42,10 @@ Un conteneur nginx est la seule porte d'entrée : il sert le dashboard et relaie
 - Le certificat est conservé dans le volume Docker `nautilyou_certs`. **Ne supprime pas ce volume** : les appareils appairés mémorisent l'empreinte du certificat et refuseraient un nouveau certificat (il faudrait les ré-appairer).
 - Si l'adresse IP de la machine change, supprime le volume `nautilyou_certs`, relance, puis ré-appaire les appareils.
 
+### Fuseau horaire
+
+Le serveur évalue les plages horaires (et le changement de jour) dans son fuseau horaire, réglé par la variable `TZ` (par défaut `Europe/Paris`). Sans réglage correct, le badge vert/rouge du dashboard serait décalé de plusieurs heures. Si tu n'es pas en France, définis `TZ` (par exemple `TZ=America/Montreal`) dans `.env` ou dans les variables du conteneur `server`.
+
 ### Sauvegarde et mise à jour
 
 Les données (enfants, appareils, activité) sont dans le volume `nautilyou_data`.

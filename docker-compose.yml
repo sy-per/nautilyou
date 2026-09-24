@@ -13,6 +13,8 @@ services:
     environment:
       PORT: 4100
       DB_PATH: /data/nautilyou.db
+      # Fuseau horaire : sert aux plages horaires et au changement de jour (voir README).
+      TZ: ${TZ:-Europe/Paris}
     volumes:
       - nautilyou_data:/data
 

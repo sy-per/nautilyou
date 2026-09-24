@@ -614,6 +614,13 @@ Oubli signalé par l'utilisateur : au premier accès il faut créer le compte pa
 - **Pas de changement de mot de passe dans l'interface** (route retirée faute d'écran) ; compte unique ; pas de double authentification. À prévoir si besoin.
 - Conséquence pour la base de dev existante : au prochain démarrage, le dashboard demandera de créer le compte.
 
+## Fuseau horaire du serveur (2026-09-24)
+
+**Bug trouvé en réel** : sur le vrai serveur Docker, le badge de l'enfant était rouge à 08h37 alors que sa plage horaire commence à 08h00. Cause : le conteneur tourne en **UTC** (06h37 pour lui), donc `computeDeviceStatus` (`status.js`, `toTimeString`) jugeait l'heure hors plage. Même défaut sur `util.today()` (`toISOString`, date UTC) : le « jour » serveur changeait à 1 h ou 2 h du matin au lieu de minuit, décalé par rapport au client Windows qui compte par jour local (bonus et activité rattachés à la mauvaise journée entre minuit et 2 h).
+- Corrigé : variable `TZ` sur le conteneur `server` (défaut `Europe/Paris` dans `docker-compose.yml`, `docker-compose.standalone.yml`, `.env.example`) ; `tzdata` installé dans l'image (`node:22-alpine` ne l'a pas, sans quoi `TZ` est ignorée) ; `today()` renvoie la date **locale** (fuseau `TZ`). Vérifié : `TZ=UTC` donne 06:38, `TZ=Europe/Paris` donne 08:38 dans l'image.
+- Limite : un seul fuseau pour tout le serveur (on suppose que les appareils sont dans le même foyer). Le client Windows évalue sa propre plage avec l'heure locale de la machine, donc l'enforcement n'était pas touché : seul le badge du dashboard et les journées côté serveur l'étaient.
+- Action utilisateur : ajouter `TZ: Europe/Paris` dans l'environnement du service `server` de son compose et reconstruire (`up -d --build`, pour installer `tzdata`).
+
 ## Statut
 
 - **UI mock du dashboard validée par l'utilisateur le 2026-09-23** ("Parfait on part là-dessus"). Détail dans la section UI mock ci-dessus.

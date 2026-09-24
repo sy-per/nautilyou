@@ -1,5 +1,8 @@
 FROM node:22-alpine
 
+# tzdata : necessaire pour que la variable TZ (ex. Europe/Paris) soit prise en compte.
+RUN apk add --no-cache tzdata
+
 WORKDIR /app
 
 COPY package.json ./

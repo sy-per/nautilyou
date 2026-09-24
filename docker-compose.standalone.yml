@@ -17,6 +17,7 @@ services:
     environment:
       PORT: 4100
       DB_PATH: /data/nautilyou.db
+      TZ: ${TZ:-Europe/Paris}
     volumes:
       - nautilyou_data:/data
 
